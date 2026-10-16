@@ -107,13 +107,20 @@ def main():
 
     # Data
     print('==> Preparing dataset %s' % args.dataset)
+    
+      
     transform_train = transforms.Compose([
         transforms.RandomCrop(28, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
+        transforms.RandomErasing(
+            probability=args.p,
+            sh=args.sh,
+            r1=args.r1,
+        ),
         transforms.Normalize((0.1307,), (0.3081,)),
-        transforms.RandomErasing(probability = args.p, sh = args.sh, r1 = args.r1, mean = [0.4914]),
     ])
+    
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
@@ -221,7 +228,7 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
         data_time.update(time.time() - end)
 
         if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda(async=True)
+            inputs, targets = inputs.cuda(), targets.cuda(non_blocking=True)
         inputs, targets = torch.autograd.Variable(inputs), torch.autograd.Variable(targets)
 
         # compute output
@@ -259,6 +266,7 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
     bar.finish()
     return (losses.avg, top1.avg)
 
+@torch.no_grad()
 def test(testloader, model, criterion, epoch, use_cuda):
     global best_acc
 
@@ -279,7 +287,7 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
+        inputs, targets = inputs, torch.autograd.Variable(targets)
 
         # compute output
         outputs = model(inputs)
